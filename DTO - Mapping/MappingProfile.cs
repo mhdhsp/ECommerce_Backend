@@ -11,6 +11,7 @@ namespace ECommerceBackend.DTO___Mapping
             CreateMap<CartItemReqDto, CartItemModel>();
             CreateMap<WishListItemReqDto, WishListModel>();
             CreateMap<UserModel, UsersResDto>();
+            CreateMap<NewProductReqDto, ProductModel>();
         }
 
     }

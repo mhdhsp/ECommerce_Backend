@@ -1,4 +1,5 @@
-﻿using ECommerceBackend.Models;
+﻿using ECommerceBackend.DTO___Mapping;
+using ECommerceBackend.Models;
 using ECommerceBackend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -45,6 +46,8 @@ namespace ECommerceBackend.Controllers
                 return NotFound(new { message = $"Product with Id {Id} not found." });
             return Ok(res);
         }
+
+
         [HttpGet("GetByCategory/{Gender}")]
         [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<ProductModel>>> GetByGender(string Gender)
@@ -55,7 +58,8 @@ namespace ECommerceBackend.Controllers
             return Ok(res);
         }
 
-        [HttpPatch("{Id}")]
+        [HttpPatch("EditProduct/{Id}")]
+        [Authorize(Roles ="Admin")]
         public async Task<ActionResult>  EditProduct(int Id, [FromBody]ProductEditReqDto item)
         {
             var res = await _service.EditProduct(Id, item);
@@ -65,7 +69,49 @@ namespace ECommerceBackend.Controllers
                 200 => Ok(res),
                 _=>BadRequest(res)
             };
-
         }
+
+        [HttpPost("AddNewProduct")]
+        [Authorize(Roles ="Admin")]
+        public async Task<ActionResult> AddNewProduct(NewProductReqDto NewItem)
+        {
+            var res = await _service.AddNewProduct(NewItem);
+            return res.StatusCode switch
+            {
+                201 => CreatedAtAction(nameof(GetById), new { Id = res.Data.PdtId }, res),
+                400 => BadRequest(res.Message),
+                _ => BadRequest(res)
+            };
+        }
+
+
+        [HttpPatch("SuspendProduct/{Id}")]
+        [Authorize(Roles ="Admin")]
+        public async Task<ActionResult> ToggleSuspend(int Id)
+        {
+            var res = await _service.ToggleSuspend(Id);
+            return res.StatusCode switch
+            {
+                404 => NotFound(res),
+                200 => Ok(res),
+                _ => BadRequest(res)
+            };
+        }
+
+        [HttpDelete("deleteProduct/{Id}")]
+        [Authorize(Roles ="Admin")]
+        public async Task<ActionResult> DeleteProduct(int Id)
+        {
+            var res = await _service.DeleteProduct(Id);
+            return res.StatusCode switch
+            {
+                404 => NotFound(res),
+                200 => Ok(res),
+                _ => BadRequest(res)
+            };
+        }
+
+
+
     }
 }

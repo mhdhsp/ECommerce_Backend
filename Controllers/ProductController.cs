@@ -27,6 +27,9 @@ namespace ECommerceBackend.Controllers
             var res = await _service.GetAllProducts();
             if (res == null)
                 return NotFound(new { message = "No products found" });
+
+
+
             if (limit != 0)
                 res=res.Take(limit).ToList();
             return Ok(res);

@@ -1,4 +1,5 @@
-﻿using ECommerceBackend.Data;
+﻿using ECommerceBackend.CommonApi;
+using ECommerceBackend.Data;
 using ECommerceBackend.DTO___Mapping;
 using ECommerceBackend.Models;
 using Microsoft.EntityFrameworkCore;
@@ -8,7 +9,7 @@ namespace ECommerceBackend.Services
     public interface ICartService
     {
         Task<List<CartItemResDto>> GetAllCartItems(int userId);
-        Task<CartItemModel?> AddToCart(CartItemReqDto item, int UserId);
+        Task<CommonResponse<CartItemModel?>> AddToCart(CartItemReqDto item, int UserId);
         Task<CartItemModel?> DeleteCartItem(int Id);
         Task<CartItemModel?> UpdateQuantity(UpdateCartItem item);
         Task<bool> DealeteAllCartItems(int UserId);
@@ -55,7 +56,7 @@ namespace ECommerceBackend.Services
 
 
 
-        public async Task<CartItemModel?> AddToCart(CartItemReqDto item,int UserId)
+        public async Task<CommonResponse<CartItemModel?>> AddToCart(CartItemReqDto item,int UserId)
         {
             var cart = await _context.Cart.FirstOrDefaultAsync(x => x.UserId == UserId);
             if (cart == null)
@@ -69,6 +70,9 @@ namespace ECommerceBackend.Services
                 
             }
             cart = await _context.Cart.FirstOrDefaultAsync(x => x.UserId == UserId);
+            var existing = await _context.CartItem.FirstOrDefaultAsync(x => x.CartId == cart.CartId && x.Pdtid == item.PdtId);
+            if (existing != null)
+                return new CommonResponse<CartItemModel?>(400, "item already exist in cart", null);
             var newItem = new CartItemModel
             {
                 CartId = cart.CartId,
@@ -79,7 +83,7 @@ namespace ECommerceBackend.Services
             await _context.AddAsync(newItem);
             await _context.SaveChangesAsync();
 
-            return newItem;
+            return new CommonResponse<CartItemModel?>(201,"item added succefuly",newItem);
             
         }
 

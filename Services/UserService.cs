@@ -14,10 +14,11 @@ namespace ECommerceBackend.Services
     public interface IUserService
     {
         Task<UserModel?> RegisterUser(UserModel newUser);
-         Task<(bool exist, bool? pass, string? tkn, string? User,string? Role)> Login(LoginReqDto cred);
+        Task<CommonResponse<LoginResDto?>> Login(LoginReqDto cred);
         Task<IEnumerable<UsersResDto>> GetAllUsers();
         Task<CommonResponse<UsersResDto?>> ToggleBlockUser(int UserId, int adminId);
         Task<CommonResponse<UsersResDto?>> GetSingleUser(int UserId);
+        Task<CommonResponse<UserCountResDto?>> CountOfUsers();
     }
     public class UserService : IUserService
     {
@@ -47,38 +48,48 @@ namespace ECommerceBackend.Services
         }
 
 
-        public async Task<(bool exist,bool? pass,string? tkn,string? User,string? Role)> Login(LoginReqDto cred)
+        public async Task<CommonResponse<LoginResDto?>> Login(LoginReqDto cred)
         {
             
 
             var existing = await _context.Users.FirstOrDefaultAsync(x => x.UserName == cred.UserName);
             if (existing == null)
-                return  (false,null,null,null,null);
+                return new CommonResponse<LoginResDto?>(404, "User does nt exist", null);
 
-            var jwtsetting = _configuration.GetSection("JwtSettings");
-            var SecretKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtsetting["SecretKey"]));
-            var creds = new SigningCredentials(SecretKey, SecurityAlgorithms.HmacSha256);
-            var Claim = new Claim[]
+            
+            if (BCrypt.Net.BCrypt.Verify(cred.PassWord, existing.PassWord))
             {
+                var jwtsetting = _configuration.GetSection("JwtSettings");
+                var SecretKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtsetting["SecretKey"]));
+                var creds = new SigningCredentials(SecretKey, SecurityAlgorithms.HmacSha256);
+                var Claim = new Claim[]
+                {
                 new Claim(ClaimTypes.NameIdentifier,existing.UserId.ToString()),
                 new Claim(ClaimTypes.Name,existing.UserName),
                 new Claim(ClaimTypes.Role,existing.Role)
-            };
+                };
 
-            var tokenHandler = new JwtSecurityToken(
-                    issuer: jwtsetting["Issuer"],
-                    audience: jwtsetting["Audience"],
-                    claims: Claim,
-                    signingCredentials: creds
-                );
+                var tokenHandler = new JwtSecurityToken(
+                        issuer: jwtsetting["Issuer"],
+                        audience: jwtsetting["Audience"],
+                        claims: Claim,
+                        signingCredentials: creds
+                    );
 
-            var token = new JwtSecurityTokenHandler().WriteToken(tokenHandler);
-            if (BCrypt.Net.BCrypt.Verify(cred.PassWord, existing.PassWord))
-                return  (true,true,token,existing.UserName,existing.Role);
+                var token = new JwtSecurityTokenHandler().WriteToken(tokenHandler);
+                var result = new LoginResDto
+                {
+                    UserName = existing.UserName,
+                    Role = existing.Role,
+                    Token = token
+                };
+                return new CommonResponse<LoginResDto?>(200, "Succesfully logined",result);
+
+            }
 
             
 
-            return (true,false,null,null,null);
+            return new CommonResponse<LoginResDto?>(400,"Incorrect Password",null);
         }
 
         public async Task<IEnumerable<UsersResDto>> GetAllUsers()
@@ -130,6 +141,18 @@ namespace ECommerceBackend.Services
 
             var result = _mapper.Map<UsersResDto>(user);
             return new CommonResponse<UsersResDto?>(200, "User blocked successfully", result);
+        }
+
+        public async Task<CommonResponse<UserCountResDto?>> CountOfUsers()
+        {
+            int validUsers = await _context.Users.CountAsync(x => x.Blocked == false);
+            int Invalidusers = await _context.Users.CountAsync(x => x.Blocked == true);
+            var result = new UserCountResDto
+            {
+                InValidUsers = Invalidusers,
+                ValidUsers = validUsers
+            };
+            return new CommonResponse<UserCountResDto?>(200, "Count of users", result);
         }
     }
 }

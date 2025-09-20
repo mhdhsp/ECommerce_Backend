@@ -1,4 +1,5 @@
-﻿using ECommerceBackend.Data;
+﻿using ECommerceBackend.CommonApi;
+using ECommerceBackend.Data;
 using ECommerceBackend.DTO___Mapping;
 using ECommerceBackend.Models;
 using Microsoft.EntityFrameworkCore;
@@ -7,9 +8,10 @@ namespace ECommerceBackend.Services
 {
     public interface IOrderService
     {
-        Task<IEnumerable<OrderModel>> GetAllOrders(int userId);
-        Task<OrderModel?> OrderOneItem(int userId, int productId, int quantity);
+        Task<CommonResponse<List<OrderModel>>> GetAllOrders(int userId);
+        Task<CommonResponse<OrderModel?>> OrderOneItem(int userId, int productId, int quantity);
         Task<OrderModel?> PlaceOrderForCart(int userId);
+        Task<CommonResponse<decimal?>> GetTotalRevenue();
     }
     public class OrderService:IOrderService
     {
@@ -19,18 +21,21 @@ namespace ECommerceBackend.Services
             _context = Context;
         }
 
-        public async Task<IEnumerable<OrderModel>> GetAllOrders(int userId)
+        public async Task<CommonResponse<List<OrderModel>>> GetAllOrders(int userId)
         {
-            var res = await _context.Orders.Include(s => s.OrderItems)
+            var  res = await _context.Orders.Include(s => s.OrderItems)
                 .Where(x => x.UserId == userId).ToListAsync();
-            return res;
+            if (res == null || !res.Any())
+                return new CommonResponse<List<OrderModel>>(404, "No order found",null);
+            return new CommonResponse<List<OrderModel>>(200, "Orders found", res);
         }
 
 
-        public async Task<OrderModel?> OrderOneItem(int userId, int productId, int quantity)
+        public async Task<CommonResponse<OrderModel?>> OrderOneItem(int userId, int productId, int quantity)
         {
             var product = await _context.Products.FirstOrDefaultAsync(p => p.PdtId == productId);
-            if (product == null || product.Stock < quantity) return null;
+            if (product == null || product.Stock < quantity)
+                return new CommonResponse<OrderModel?>(404, "Product not found", null);
 
             var order = new OrderModel
             {
@@ -38,13 +43,13 @@ namespace ECommerceBackend.Services
                 OrderDate = DateTime.UtcNow,
                 Amount = Convert.ToDecimal(product.Price * quantity),
                 OrderItems = new List<OrderItemModel>
-        {
-            new OrderItemModel
-            {
-                ProductId = productId,
-                Quantity = quantity
-            }
-        }
+                 {
+                      new OrderItemModel
+                      {
+                            ProductId = productId,
+                            Quantity = quantity
+                        }
+                 }
             };
 
             _context.Orders.Add(order);
@@ -52,7 +57,7 @@ namespace ECommerceBackend.Services
             product.Stock -= quantity;
 
             await _context.SaveChangesAsync();
-            return order;
+            return new CommonResponse<OrderModel?>(200, "succesfully added ", order);
         }
 
         public async Task<OrderModel?> PlaceOrderForCart(int userId)
@@ -92,6 +97,14 @@ namespace ECommerceBackend.Services
             return order;
         }
 
+        public async Task<CommonResponse<decimal?>> GetTotalRevenue()
+        {
+            var revenue = await _context.Orders.SumAsync(x => (decimal?)x.Amount);
+            Console.WriteLine("from revenue");
+            if (revenue == null)
+                return new CommonResponse<decimal?>(404, "No orders found", null);
 
+            return new CommonResponse<decimal?>(200, "Total revenue", revenue);
+        }
     }
 }

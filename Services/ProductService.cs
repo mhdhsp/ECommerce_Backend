@@ -9,13 +9,14 @@ namespace ECommerceBackend.Services
 {
     public interface IAppProductService
     {
-        Task<ICollection<ProductModel>> GetAllProducts();
+        Task<ICollection<ProductModel>> GetAvailProducts();
         Task<ProductModel?> GetById(int Id);
         Task<ICollection<ProductModel>> GetByGender(string Gender);
         Task<CommonResponse<ProductModel?>> EditProduct(int Id, ProductEditReqDto item);
         Task<CommonResponse<ProductModel?>> AddNewProduct(NewProductReqDto itemDto);
         Task<CommonResponse<ProductModel?>> ToggleSuspend(int Id);
         Task<CommonResponse<ProductModel?>> DeleteProduct(int Id);
+        Task<CommonResponse<AllPdtsResDto?>> GetAllProducts();
     }
     public class AppProductService:IAppProductService
     {
@@ -27,9 +28,9 @@ namespace ECommerceBackend.Services
             _mapper = mapper;
         }
 
-        public async Task<ICollection<ProductModel>> GetAllProducts()
+        public async Task<ICollection<ProductModel>> GetAvailProducts()
         {
-            var res =await  _context.Products.Include(p=>p.Sizes).ToListAsync();
+            var res =await  _context.Products.Include(p=>p.Sizes).Where(x=>x.Suspend==false).ToListAsync();
             return res;
         }
 
@@ -121,5 +122,24 @@ namespace ECommerceBackend.Services
             await _context.SaveChangesAsync();
             return new CommonResponse<ProductModel?>(200, "product deletd succesfully", product);
         }
+
+        public async Task<CommonResponse<AllPdtsResDto?>> GetAllProducts()
+        {
+            try
+            {
+                var res = new AllPdtsResDto
+                {
+                    InValidProducts = await _context.Products.Where(x => x.Suspend == true).ToListAsync(),
+                    ValidProducts = await _context.Products.Where(x => x.Suspend == false).ToListAsync()
+                };
+                return new CommonResponse<AllPdtsResDto?>(200, "All products", res);
+            }
+            catch(Exception ex)
+            {
+                return new CommonResponse<AllPdtsResDto?>(500, $"Error:{ex.Message}", null);
+            }
+        }
+
+       
     }
 }

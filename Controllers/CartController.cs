@@ -35,7 +35,7 @@ namespace ECommerceBackend.Controllers
             return Ok(res);
         }
 
-        [HttpPost]
+        [HttpPost("AddToCart")]
         public async  Task<ActionResult> AddToCart([FromBody] CartItemReqDto itemDto)
         {
             var UserIdObj = HttpContext.Items["UserId"];
@@ -43,11 +43,13 @@ namespace ECommerceBackend.Controllers
                 return Unauthorized(new CommonResponse<string?>(401, "UnAuthorized User", null));
             int UserId = Convert.ToInt32(UserIdObj);
             var res = await _service.AddToCart(itemDto,UserId);
-            if (res == null)
-                return BadRequest(new CommonResponse<string?>(400,"Invalid data",null));
-            return CreatedAtAction(nameof(GetAllCartItems),         
-                                 new { id = res.CartItemId }, 
-                                 new CommonResponse<CartItemModel>(201, "Added to cart", res));
+            return res.StatusCode switch
+            {
+                400 => NotFound(res),
+                201 => CreatedAtAction(nameof(GetAllCartItems), new { Id = itemDto.PdtId }, res),
+                _ => BadRequest(res)
+
+            };
         }
 
 

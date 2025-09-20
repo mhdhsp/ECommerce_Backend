@@ -1,4 +1,5 @@
-﻿using ECommerceBackend.DTO___Mapping;
+﻿using ECommerceBackend.CommonApi;
+using ECommerceBackend.DTO___Mapping;
 using ECommerceBackend.Models;
 using ECommerceBackend.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -21,11 +22,11 @@ namespace ECommerceBackend.Controllers
 
 
        
-        [HttpGet]
-        [AllowAnonymous]
+        [HttpGet("GetAvailProducts")]
+        
         public async Task<ActionResult<ProductModel>> GetAllProducts([FromQuery(Name ="_limit")]int limit=0)
         {
-            var res = await _service.GetAllProducts();
+            var res = await _service.GetAvailProducts();
             if (res == null)
                 return NotFound(new { message = "No products found" });
 
@@ -85,7 +86,7 @@ namespace ECommerceBackend.Controllers
         }
 
 
-        [HttpPatch("SuspendProduct/{Id}")]
+        [HttpPatch("ToggleSuspend/{Id}")]
         [Authorize(Roles ="Admin")]
         public async Task<ActionResult> ToggleSuspend(int Id)
         {
@@ -98,7 +99,7 @@ namespace ECommerceBackend.Controllers
             };
         }
 
-        [HttpDelete("deleteProduct/{Id}")]
+        [HttpDelete("DeleteProduct/{Id}")]
         [Authorize(Roles ="Admin")]
         public async Task<ActionResult> DeleteProduct(int Id)
         {
@@ -111,7 +112,20 @@ namespace ECommerceBackend.Controllers
             };
         }
 
+        
 
+        [HttpGet("GetAllProducts")]
+        [Authorize(Roles ="Admin")]
+        public async Task<ActionResult> GetAllPoducts()
+        {
+            var res = await _service.GetAllProducts();
+            return res.StatusCode switch
+            {
+                200 => Ok(res),
+                500 => StatusCode(500, res),
+                _ => BadRequest(res)
+            };
+        }
 
     }
 }

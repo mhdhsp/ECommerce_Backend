@@ -3,10 +3,9 @@ using ECommerceBackend.CommonApi;
 using ECommerceBackend.DTO___Mapping;
 using ECommerceBackend.Models;
 using ECommerceBackend.Services;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+
 
 namespace ECommerceBackend.Controllers
 {
@@ -38,12 +37,15 @@ namespace ECommerceBackend.Controllers
         public async Task<IActionResult> Login([FromBody]LoginReqDto cred )
         {
             var res = await _service.Login(cred);
-            if (res.exist == false)
-                return BadRequest(new { message="User doesnt exist" });
-            if (res.pass == false)
-                return Unauthorized(new { message = "Password doesnt match" });
-            return Ok(new {Token= res.tkn,UserName=res.User,Role=res.Role});
+            return res.StatusCode switch
+            {
+                404 => NotFound(res),
+                400 => BadRequest(res),
+                200 => Ok(res),
+                _ => BadRequest(res)
+            };
         }
+
 
         [HttpGet("GetAllUsers")]
         [Authorize(Roles = "Admin")]
@@ -54,6 +56,7 @@ namespace ECommerceBackend.Controllers
                 return NotFound(new CommonResponse<string?>(404, "No users Found", null));
             return Ok(new CommonResponse<Object?>(200, "Succefully found users", res));
         }
+
 
         [HttpGet("GetSingleUser/{userId}")]
         [Authorize(Roles ="Admin")]
@@ -85,8 +88,15 @@ namespace ECommerceBackend.Controllers
                 404 => NotFound(res.Message),
                 _ => BadRequest(res)
             };
+        }
 
 
+        [HttpGet("CountOfUsers")]
+        [Authorize(Roles ="Admin")]
+        public async Task<ActionResult> GetCountOfUsers()
+        {
+            var res = await _service.CountOfUsers();
+            return Ok(res);
         }
     }
 }

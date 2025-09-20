@@ -3,6 +3,7 @@ using ECommerceBackend.Data;
 using ECommerceBackend.DTO___Mapping;
 using ECommerceBackend.MiddleWare;
 using ECommerceBackend.Services;
+using ECommerceBackend.Services.DashBoard;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Authorization;
@@ -55,6 +56,7 @@ namespace ECommerceBackend
             builder.Services.AddScoped<ICartService, CartService>();
             builder.Services.AddScoped<IWishListService, WishListService>();
             builder.Services.AddScoped<IOrderService, OrderService>();
+            builder.Services.AddScoped<IDashBoardService, DashBoardService>();
 
             var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 
